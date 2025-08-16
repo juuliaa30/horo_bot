@@ -2,51 +2,64 @@ import os
 from dotenv import load_dotenv
 from telegram import *
 from telegram.ext import *
-from parsing import get_capicorn
+from parsing import get_horo
 
 load_dotenv()
 TOKEN = os.getenv('TELEGRAM_TOKEN')
 
-MENU, OPTION1, OPTION2 = range(3)
+MENU, HORO = range(2)
 
-async def start_command(update: Update, context: CallbackContext):
-    buttons = [
-        [InlineKeyboardButton('Козерог', callback_data='option1')],
-        [InlineKeyboardButton('Водолей', callback_data='option2')],
-        [InlineKeyboardButton('Рыбы', callback_data='option3')],
-        [InlineKeyboardButton('Овен', callback_data='option4')],
-        [InlineKeyboardButton('Телец', callback_data='option5')],
-        [InlineKeyboardButton('Близнецы', callback_data='option6')],
-        [InlineKeyboardButton('Рак', callback_data='option7')],
-        [InlineKeyboardButton('Лев', callback_data='option8')],
-        [InlineKeyboardButton('Дева', callback_data='option9')],
-        [InlineKeyboardButton('Весы', callback_data='option10')],
-        [InlineKeyboardButton('Скорпион', callback_data='option11')],
-        [InlineKeyboardButton('Стрелец', callback_data='option12')],
+BUTTONS = [
+        [InlineKeyboardButton('Козерог', callback_data='capricorn')],
+        [InlineKeyboardButton('Водолей', callback_data='aquarius')],
+        [InlineKeyboardButton('Рыбы', callback_data='pisces')],
+        [InlineKeyboardButton('Овен', callback_data='aries')],
+        [InlineKeyboardButton('Телец', callback_data='taurus')],
+        [InlineKeyboardButton('Близнецы', callback_data='gemini')],
+        [InlineKeyboardButton('Рак', callback_data='cancer')],
+        [InlineKeyboardButton('Лев', callback_data='leo')],
+        [InlineKeyboardButton('Дева', callback_data='virgo')],
+        [InlineKeyboardButton('Весы', callback_data='libra')],
+        [InlineKeyboardButton('Скорпион', callback_data='scorpio')],
+        [InlineKeyboardButton('Стрелец', callback_data='sagittarius')],
     ]
 
-    reply_markup = InlineKeyboardMarkup(buttons)
+ZODIAC_SIGNS = {
+    'capricorn', 'aquarius', 'pisces', 'aries',
+    'taurus', 'gemini', 'cancer', 'leo',
+    'virgo', 'libra', 'scorpio', 'sagittarius'
+}
 
-    await update.message.reply_text('Welcome! Please choose an option:', reply_markup=reply_markup)
+def get_keyboard():
+    return InlineKeyboardMarkup(BUTTONS)
+
+async def start_command(update: Update, context: CallbackContext):
+    reply_markup = get_keyboard()
+
+    await update.message.reply_text('Выберите Ваш знак зодиака', reply_markup=reply_markup)
     return MENU
 
 async def button(update: Update, context: CallbackContext) -> int:
     query = update.callback_query
+    reply = [[InlineKeyboardButton('Назад', callback_data='back')]]
     await query.answer()
 
-    if query.data == "option1":
-        await query.edit_message_text(text=get_capicorn())
-        return OPTION1
-    elif query.data == "option2":
-        await query.edit_message_text(text="You selected Option 2.")
-        return OPTION2
-    else:
-        await query.edit_message_text(text="Unknown option selected.")
+    if query.data == 'back':
+        await query.edit_message_text(text='Выберите Ваш знак зодиака', reply_markup=get_keyboard())
         return MENU
+
+    if query.data not in ZODIAC_SIGNS and query.data != 'back':
+        await query.answer("Неизвестный знак зодиака")
+        return
+
+    await query.edit_message_text(text=get_horo(query.data), reply_markup=InlineKeyboardMarkup(reply))
 
 async def cancel(update: Update, context: CallbackContext) -> int:
     await update.message.reply_text("Operation cancelled.")
     return ConversationHandler.END
+
+async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    await update.message.reply_text(f'Я не понимаю.\nПожалуйста, выберите из списка', reply_markup=get_keyboard())
 
 if __name__ == '__main__':
     app = Application.builder().token(TOKEN).build()
@@ -55,12 +68,12 @@ if __name__ == '__main__':
         entry_points=[CommandHandler("start", start_command)],
         states={
             MENU: [CallbackQueryHandler(button)],
-            OPTION1: [MessageHandler(filters.TEXT & ~filters.COMMAND, cancel)],
-            OPTION2: [MessageHandler(filters.TEXT & ~filters.COMMAND, cancel)],
+            HORO: [MessageHandler(filters.TEXT & ~filters.COMMAND, cancel)],
         },
         fallbacks=[CommandHandler("start", start_command)],
     )
 
     app.add_handler(conv_handler)
+    app.add_handler(MessageHandler(filters.TEXT,handle_message))
 
     app.run_polling(poll_interval=5)
